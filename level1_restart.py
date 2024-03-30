@@ -1,0 +1,770 @@
+import pygame, sys
+import pygame.freetype
+from pygame import mixer
+import time
+import os
+from button import Button
+from pygame.locals import *
+import random
+pygame.init()
+
+pygame.mixer.pre_init(44100, -16, 2, 1024)
+
+#defining game variables
+screen_width, screen_height = 1000,500
+screen = pygame.display.set_mode((screen_width, screen_height))
+NORTHERN_BG = pygame.image.load('images/northernlights_bg.jpg')
+NORTHERN_BG_img = pygame.transform.scale(NORTHERN_BG,(300,150))
+lightning_BG = pygame.image.load('images/lightning_bg.png')
+lightning_BG_img = pygame.transform.scale(lightning_BG,(1000,500))
+winter_BG = pygame.image.load('images/winter_bg.png')
+winter_BG_img = pygame.transform.scale(winter_BG,(1000,500))
+spooky_BG = pygame.image.load('images/spooky_bg.png')
+spooky_BG_img = pygame.transform.scale(spooky_BG,(300,150))
+sunset_BG = pygame.image.load('images/sunset_bg.png')
+sunset_BG_img = pygame.transform.scale(sunset_BG,(300,150))
+bg_list = []
+clock = pygame.time.Clock()
+#GAMEOVER MENU
+BG = pygame.image.load("images/northernlights_bg.jpg")
+thing = 0
+def restart_func():
+    screen.blit(BG, (0,0))
+    player_coords_change[0] += 1
+    for i in range(len(x_of_all_enemies)):
+        x_of_all_enemies.pop()
+        y_of_all_enemies.pop()
+    get_coords_of_all_enemies(x_of_all_enemies,y_of_all_enemies,type_of_minion,world_data,vel_blocks)
+    vel_blocks.pop()
+    vel_blocks.append(0)
+    from level1 import main_loop
+    main_loop()
+    
+def back_to_menu():
+    from main import main_menu
+    main_menu(len(coins_collected), bg_img)
+
+def game_over():
+    run = True
+    pygame.display.set_caption('Game Over')
+    while run:
+        screen.blit(BG, (0, 0))
+
+        MENU_MOUSE_POS = pygame.mouse.get_pos()
+
+        MENU_TEXT = get_font(75).render("GAME OVER", True, "red")
+        MENU_RECT = MENU_TEXT.get_rect(center=(screen_width//2, screen_height//5))
+
+        RESTART_BUTTON = Button(image=pygame.image.load("assets/level_bg.png"), pos=(screen_width//2, screen_height - screen_height//2), 
+                            text_input="RESTART", font=get_font(75), base_color="#d7fcd4", hovering_color="green")
+        MENU_BUTTON = Button(image=pygame.image.load("assets/shop_bg.png"), pos=(screen_width//4,  screen_height - screen_height//5), 
+                            text_input="MENU", font=get_font(75), base_color="#d7fcd4", hovering_color="green")
+        QUIT_BUTTON = Button(image=pygame.image.load("assets/Quit Rect.png"), pos=(screen_width - screen_width//3.5, screen_height - screen_height//5), 
+                            text_input="QUIT", font=get_font(75), base_color="#d7fcd4", hovering_color="green")
+
+        screen.blit(MENU_TEXT, MENU_RECT)
+
+        for button in [RESTART_BUTTON, MENU_BUTTON, QUIT_BUTTON]:
+            button.changeColor(MENU_MOUSE_POS)
+            button.update(screen)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if RESTART_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    restart_func()
+                    run = False
+                    break
+                if MENU_BUTTON.checkForInput (MENU_MOUSE_POS):
+                    back_to_menu()
+                if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    pygame.quit()
+                    sys.exit()
+
+        pygame.display.update()
+    
+coordinates = {
+    "xc": 64,
+    "yc": 390 #420
+}
+
+jump = False
+jump_traj = ""
+global fall_count
+fall_count = []
+jump_count = []
+collide_right = False
+collide_left = False
+on_brick = []
+global vel_blocks
+vel_blocks = [0]
+player_coords_change = [0]
+tile_size = 30
+enemy_size = 60
+brick = pygame.image.load('images/grass.png')
+global brick_img
+brick_img = pygame.transform.scale(brick, (tile_size, tile_size))
+harake_minion = pygame.image.load('images/harakeminion1.png')
+global harake_minion_img
+harake_minion_img = pygame.transform.scale(harake_minion, (enemy_size, enemy_size))
+hezb_minion = pygame.image.load('images/hezbminion1.png')
+global hezb_minion_img 
+hezb_minion_img = pygame.transform.scale(hezb_minion, (enemy_size, enemy_size))
+width, height, vel, jumpvelup, jumpveldown, enemy_vel = 30, 60, 15, 18, 4, 3
+obst_width, obst_height = 80, 90
+ox, oy = 800, 500
+sens = ['hi']
+run = True
+obst_list = [[800, 500, 80, 70], [100, 300, 30, 70]]
+# my idea is to make every obstacle coordinates stored in a list then check if this coodinate in list
+direction = 0
+
+#graphical loading
+hezb_minion_image_standing = pygame.image.load(os.path.join("images/hezbminion1.png"))
+hezb_minion_standing = pygame.transform.scale(hezb_minion_image_standing, (60, 55.375))
+hezb_minion1_image = pygame.image.load(os.path.join("images/hezbminion2.png"))
+hezb_minion_anim_1 = pygame.transform.scale(hezb_minion1_image, (enemy_size, enemy_size))
+hezb_minion2_image = pygame.image.load(os.path.join("images/hezbminion3.png"))
+hezb_minion_anim_2 = pygame.transform.scale(hezb_minion2_image, (enemy_size, enemy_size))
+hezb_minion_animation = [hezb_minion_anim_1, hezb_minion_anim_2]
+hezb_minion_index = []
+
+harake_minion_image_standing = pygame.image.load(os.path.join("images/harakeminion1.png"))
+harake_minion_standing = pygame.transform.scale(harake_minion_image_standing, (60, 55.375))
+harake_minion1_image = pygame.image.load(os.path.join("images/harakeminion2.png"))
+harake_minion_anim_1 = pygame.transform.scale(harake_minion1_image, (enemy_size, enemy_size))
+harake_minion2_image = pygame.image.load(os.path.join("images/harakeminion3.png"))
+harake_minion_anim_2 = pygame.transform.scale(harake_minion2_image, (enemy_size, enemy_size))
+harake_minion_animation = [harake_minion_anim_1, harake_minion_anim_2]
+harake_minion_index = []
+
+player_width , player_height = 70, 90
+dahyeman1_image = pygame.image.load(os.path.join("images/dahyeman1.png"))
+dahyeman1 = pygame.transform.scale(dahyeman1_image, (player_width , player_height))
+dahyeman2_image = pygame.image.load(os.path.join("images/dahyeman2.png"))
+dahyeman2 = pygame.transform.scale(dahyeman2_image, (player_width , player_height))
+dahyeman3_image = pygame.image.load(os.path.join("images/dahyeman3.png"))
+dahyeman3 = pygame.transform.scale(dahyeman3_image, (player_width , player_height))
+dahyeman4_image = pygame.image.load(os.path.join("images/dahyeman4.png"))
+dahyeman4 = pygame.transform.scale(dahyeman4_image, (player_width , player_height))
+walking_list = [dahyeman1, dahyeman2, dahyeman3, dahyeman4]
+walk_animation_index = 0
+walking = False
+
+dahyemanjump1_img = pygame.image.load(os.path.join("images/dahyemanjump1.png"))
+dahyemanjump1 = pygame.transform.scale(dahyemanjump1_img, (player_width , player_height))
+dahyemanjump2_img = pygame.image.load(os.path.join("images/dahyemanjump2.png"))
+dahyemanjump2 = pygame.transform.scale(dahyemanjump2_img, (player_width , player_height))
+jumping_list = [dahyemanjump1, dahyemanjump2]
+jump_animation_index = 0
+
+dahyeman1_p_image = pygame.image.load(os.path.join("images/powered_dahyeman1.png"))
+dahyeman1_p = pygame.transform.scale(dahyeman1_p_image, (player_width, player_height))
+dahyeman2_p_image = pygame.image.load(os.path.join("images/powered_dahyeman2.png"))
+dahyeman2_p = pygame.transform.scale(dahyeman2_p_image, (player_width, player_height))
+dahyeman3_p_image = pygame.image.load(os.path.join("images/powered_dahyeman3.png"))
+dahyeman3_p = pygame.transform.scale(dahyeman3_p_image, (player_width, player_height))
+dahyeman4_p_image = pygame.image.load(os.path.join("images/powered_dahyeman4.png"))
+dahyeman4_p = pygame.transform.scale(dahyeman4_p_image, (player_width, player_height))
+dahyeman_jump_powered = pygame.image.load(os.path.join("images/powered_dahyeman_jumping.png"))
+dahyeman_jumping_p = pygame.transform.scale(dahyeman_jump_powered, (player_width, player_height))
+
+mushroom = pygame.image.load('images/tabouleh.png')
+mushroom_size = 40
+mushroom_img = pygame.transform.scale(mushroom, (mushroom_size,mushroom_size))
+saved_walking_animation = [dahyeman1, dahyeman2, dahyeman3, dahyeman4]
+saved_jumping_list = [dahyemanjump1, dahyemanjump2]
+powered_jumping_list = [dahyeman_jumping_p, dahyeman_jumping_p]
+is_powered_up = [0]
+power_up_animation = [dahyeman1_p, dahyeman2_p,dahyeman3_p,dahyeman4_p]
+def power_up():
+    is_powered_up.append(0)
+    for i in range(len(walking_list)):
+        del walking_list[i]
+        walking_list.insert(i, power_up_animation[i])
+    for i in range(len(jumping_list)):
+        del jumping_list[i]
+        jumping_list.insert(i, powered_jumping_list[i])
+def power_off(x):
+    is_powered_up.append(0)
+    for i in range(len(saved_walking_animation)):
+        del walking_list[i]
+        walking_list.insert(i, saved_walking_animation[i])
+    for i in range(len(saved_jumping_list)):
+        del jumping_list[i]
+        jumping_list.insert(i, saved_jumping_list[i])
+    coordinates['xc'] -=100
+    coordinates['yc'] += 17
+def check_x_coords(x, list):
+    for i in list:
+        c = i[0]
+        if c-width == x or x == c+i[2]:
+            return False
+        return True
+
+
+def check_y_coords(y, list):
+    for i in list:
+        c = i[1]
+        if c-height == y or y == c+i[3]:
+            return False
+        return True
+
+
+
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption('Dahye Run')
+pygame.display.set_icon(pygame.image.load("images/hezbminion1.png"))
+
+def get_font(size): 
+    return pygame.font.Font("assets/font.ttf", size)
+
+#DRAWING SECTION
+bg_img = pygame.image.load('images/background.jpg')
+
+
+world_data = [
+    [0],
+    [0],
+    [0],
+    [0],
+    [0],
+    [0],
+    [0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 7, 7, 7, 7, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 7, 7, 3, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+] # 14  29      
+brick_list = []
+enemies_rect = []
+jump_check = [0]
+x_coords_of_all_blocks = []
+y_coords_of_all_blocks = []
+col_counts=[]
+coords_of_all_enemies_kill = []
+row_count = 0
+for r in world_data:
+    col_count = 0
+    for c in r:
+            if c == 1:
+                img = pygame.transform.scale(brick, (tile_size, tile_size))
+                img_rect = img.get_rect()
+                img_rect.x = col_count * tile_size
+                col_counts.append(col_count)
+                x_coords_of_all_blocks.append(img_rect.x)
+                img_rect.y = row_count * tile_size
+                y_coords_of_all_blocks.append(img_rect.y)
+                brick_list.append(img_rect)
+            elif c ==2 or c==3:
+                coords_of_all_enemies_kill.append((col_count,row_count))
+            if c==2:
+                img = pygame.transform.scale(hezb_minion_image_standing, (enemy_size, enemy_size))
+                img_rect = img.get_rect()
+                img_rect.x = col_count * tile_size
+                img_rect.y = row_count * tile_size
+                enemies_rect.append(img_rect)
+            if c == 3:
+                img = pygame.transform.scale(harake_minion_image_standing, (enemy_size, enemy_size))
+                img_rect = img.get_rect()
+                img_rect.x = col_count * tile_size
+                img_rect.y = row_count * tile_size
+                enemies_rect.append(img_rect)
+            col_count += 1
+    row_count += 1
+#Yo adel if you seeing these you be a spoiled kid
+def update_world(x_list):
+    for i in range(len(x_list)):
+        x_list[i] = col_counts[i] * tile_size + int(vel_blocks[0])
+def draw_world(x_coords, y_coords):
+    global coords_list
+    coords_list = list(zip(x_coords,y_coords))
+    for i in range(len(x_coords)):
+        screen.blit(img, coords_list[i])
+def draw_bg():
+    for i in range(-3, 10):
+        screen.blit(bg_img, (screen_width*i+vel_blocks[0], 0))
+    
+evels_added = []
+type_of_minion = []
+x_of_all_enemies = []
+y_of_all_enemies = []
+sens_of_enemies = []
+enemies_state_list = []
+enemies_randomly_walking = []
+
+def get_coords_of_all_enemies(x_list,y_list,type, data, vel_blocks):
+    x_list.clear()
+    y_list.clear()
+    type.clear()
+    row_count = 0
+    for r in data:
+            col_count = 0
+            for c in r:
+                if c==2 or c==3:
+                    x_list.append(col_count*tile_size + int(vel_blocks[0]))
+                    y_list.append(row_count*tile_size)  
+                    if c==2:
+                        type.append('harake')
+                    else:
+                        type.append('hezb')                  
+                col_count += 1
+            row_count += 1
+
+get_coords_of_all_enemies(x_of_all_enemies,y_of_all_enemies,type_of_minion,world_data,vel_blocks)
+evels_added = []
+for i in range(len(x_of_all_enemies)):
+    evels_added.append([])
+    enemies_randomly_walking.append([])
+def assign_random_state(list,ex_list):
+    list.clear()
+    for i in range(len(ex_list)):
+        num = random.randint(1,3)
+        if num == 1:
+            list.append([0, 'standing'])
+        elif num==2:
+            list.append([0, 'left'])
+        else:
+            list.append([0, 'right'])
+assign_random_state(enemies_randomly_walking,x_of_all_enemies)
+def kill_enemy(x, y, index): 
+    del x_of_all_enemies[index]
+    del y_of_all_enemies[index]
+    del world_data[coords_of_all_enemies_kill[index][1],coords_of_all_enemies_kill[index][0]]
+    dahyeman = Player(walking_list, jumping_list, 'yes')
+    #dahyeman.double_jump(vel_blocks, 'yes')
+
+def enemy_ai_move(px,py, ex_list,ey_list, evel,sens_list):
+    jumprect_fall = pygame.Rect(coordinates["xc"], coordinates["yc"],jumping_list[jump_animation_index+1].get_width(),jumping_list[jump_animation_index+1].get_height() )
+    sens_list.clear()
+    enemies_state_list.clear()
+    for i in range(len(ex_list)):
+        try:
+            if (ex_list[i]-400<px<ex_list[i]+400) and (ey_list[i]-100<py<ey_list[i]+100):
+                if px > ex_list[i]:
+                    ex_list[i] += evel
+                    evels_added[i].append(-1*evel)
+                    sens_list.insert(i, 'right')
+                    enemies_state_list.append('moving')
+                elif (ex_list[i]-jumprect_fall.width*0.5<=jumprect_fall.x) and (ey_list[i]-(jumprect_fall.height//2)>=jumprect_fall.y>=ey_list[i]-jumprect_fall.height):
+                    enemies_state_list.append('standing')
+                    kill_enemy(ex_list[i], ey_list[i], i)
+                elif (ex_list[i]-player_width*0.8<=px<=ex_list[i]+player_width*1.5) and (ey_list[i]-enemy_size<py<ey_list[i]+enemy_size//2) :
+                    enemies_state_list.append('standing')
+                    if len(is_powered_up) %2!=0:
+                        game_over()
+                    else:
+                        power_off(coordinates['xc'])
+                    
+                elif px-width<ex_list[i]<px+width:
+                    continue
+                elif px == ex_list[i]:
+                    sens_list.insert(i, sens)
+                else:
+                    ex_list[i] -= evel
+                    enemies_state_list.append('moving')
+                    evels_added[i].append(1*evel)
+                    sens_list.insert(i, 'left')
+            else:
+                for r in range(len(enemies_randomly_walking)):
+                    if enemies_randomly_walking[r][0] < 50:
+                        if enemies_randomly_walking[r][1] == 'left':
+                            ex_list[i] -= evel
+                            enemies_state_list.append('moving')
+                            evels_added[i].append(1*evel)
+                            sens_list.insert(i, 'left')
+                        elif enemies_randomly_walking[r][1] == 'right':
+                            ex_list[i] += evel
+                            evels_added[i].append(-1*evel)
+                            sens_list.insert(i, 'right')
+                            enemies_state_list.append('moving')
+                            
+
+                        num = enemies_randomly_walking[r][0]
+                        del enemies_randomly_walking[r][0]
+                        enemies_randomly_walking[r].insert(0, num+1)
+                    else:
+                        assign_random_state(enemies_randomly_walking,ex_list)
+            if ((screen_width//5)*3.35<=px<=screen_width) and (walking == True) and (sens[-1] =='right'):
+                        ex_list[i] -=evel*3
+                        evels_added[i].append(3)
+            elif (0<=coordinates['xc']<=(screen_width//5)) and (walking == True) and (sens[-1] =='left'):
+                        ex_list[i] +=evel*3
+                        evels_added[i].append(-3)
+            for i in range(len(enemies_rect)):
+                enemies_rect[i].x = x_of_all_enemies[i]
+                enemies_rect[i].y = y_of_all_enemies[i]
+        except:
+            h = 1     
+     
+enemy_ai_move(coordinates["xc"],coordinates["yc"], x_of_all_enemies,y_of_all_enemies, enemy_vel,sens_of_enemies)
+def draw_enemies(x_list,y_list,type,sens_list, state):
+    enemy_coords = list(zip(x_list, y_list))
+    enemy_tuple = list(zip(type, enemy_coords))
+    for i in range(len(enemy_tuple)):
+        if enemy_tuple[i][0] == 'harake':
+            try:
+                if sens_list[i] == 'left':
+                    if state[i] == 'moving':
+                        screen.blit(harake_minion_animation[len(harake_minion_index)-1],enemy_tuple[i][-1])
+                        harake_minion_index.append(0)
+                        if len(harake_minion_index) == 3:
+                            harake_minion_index.clear()
+                    else:
+                        screen.blit(hezb_minion_img, enemy_tuple[i][-1])
+                        
+                else:
+                    if state[i] == 'moving':
+                        screen.blit(pygame.transform.flip(harake_minion_animation[len(harake_minion_index) - 1], True, False),enemy_tuple[i][-1])
+                        harake_minion_index.append(0)
+                        if len(harake_minion_index) == 3: ###########################################dry
+                            harake_minion_index.clear()
+                    else:
+                        
+                        screen.blit(pygame.transform.flip(harake_minion_img, True, False),  (enemy_tuple[i][-1]))
+            except:
+                screen.blit(harake_minion_img, enemy_tuple[i][-1])
+        elif enemy_tuple[i][0] == 'hezb':
+            try:
+                if sens_list[i] == 'left':
+                    if state[i] == 'moving':
+                        screen.blit(hezb_minion_animation[len(hezb_minion_index)-1],enemy_tuple[i][-1])
+                        hezb_minion_index.append(0)
+                        if len(hezb_minion_index) == 3:
+                            hezb_minion_index.clear()
+                    else:
+                        screen.blit(hezb_minion_img, enemy_tuple[i][-1])
+                        
+                else:
+                    if state[i] == 'moving':
+                        screen.blit(pygame.transform.flip(hezb_minion_animation[len(hezb_minion_index) - 1], True, False),enemy_tuple[i][-1])
+                        hezb_minion_index.append(0)
+                        if len(hezb_minion_index) == 3:
+                            hezb_minion_index.clear()
+                    else:
+                        
+                        screen.blit(pygame.transform.flip(hezb_minion_img, True, False),  (enemy_tuple[i][-1]))
+            except:
+                screen.blit(hezb_minion_img, enemy_tuple[i][-1])
+        if state == 'moving':
+                hezb_minion_index.append(0)
+                if len(hezb_minion_index) == 48:
+                    hezb_minion_index.clear()
+
+x_of_all_coins, y_of_all_coins = [], []
+coins_collected = []
+def get_coords_of_all_element(x_list,y_list, data, vel_blocks,element):
+    x_list.clear()
+    y_list.clear()
+    row_count = 0
+    for r in data:
+            col_count = 0
+            for c in r:
+                if c==7 and (element == 'coin' or element == 'coins'):
+                    x_list.append(col_count*tile_size + int(vel_blocks[0]))
+                    y_list.append(row_count*tile_size)
+                elif c==9 and (element =='mushroom' or element == 'mushrooms'):
+                    x_list.append(col_count*tile_size + int(vel_blocks[0]))
+                    y_list.append(row_count*tile_size)                 
+                col_count += 1
+            row_count += 1
+coin = pygame.image.load('images/coin.png')
+coin_image = pygame.transform.scale(coin, (tile_size,tile_size))
+get_coords_of_all_element(x_of_all_coins,y_of_all_coins,world_data,vel_blocks, 'coin')
+def check_element_collected(px,py,x_list,y_list, element):
+    for i in range(len(x_list)):
+            if (x_list[i]-width*1.8<=px<=x_list[i]+width*0.7) and ((y_list[i]-enemy_size<py<y_list[i]+enemy_size) or (py<=y_list[i]<=py+player_height)):
+                if element == 'coin':
+                    coins_collected.append(1)
+                elif element == 'mushroom' and len(is_powered_up)%2!= 0:
+                    power_up()
+                coords = (x_list[i]//tile_size-(vel_blocks[0]//tile_size),y_list[i]//tile_size)
+                del world_data[coords[1]][coords[0]]
+                world_data[coords[1]].insert(coords[0], 0)
+def draw_coins(x_list,y_list):
+    get_coords_of_all_element(x_of_all_coins,y_of_all_coins,world_data,vel_blocks, 'coin')
+    coin_coords = list(zip(x_list, y_list))
+    for i in range(len(coin_coords)):
+            screen.blit(coin_image, coin_coords[i])
+            
+time_clock = 500#in secs
+time_passed = []
+time_passed_int = len(time_passed)
+def draw_scoreboard():
+    time_passed_int = len(time_passed)
+    time_text = get_font(20).render(f"Time:{time_clock-time_passed_int//18}", True, "red")
+    coin_text = get_font(20).render(f"Coins:{len(coins_collected)}", True, "yellow")
+    screen.blit(time_text, (screen_width*0.8,screen_height//10))
+    screen.blit(coin_text, (screen_width*0.05,screen_height//10))
+
+x_of_all_mushrooms, y_of_all_mushrooms = [],[]
+get_coords_of_all_element(x_of_all_mushrooms,y_of_all_mushrooms,world_data,vel_blocks,'mushroom')
+def draw_mushrooms(x_list,y_list):
+    get_coords_of_all_element(x_of_all_mushrooms,y_of_all_mushrooms,world_data,vel_blocks, 'mushroom')
+    mushroom_coords = list(zip(x_list, y_list))
+    for i in range(len(mushroom_coords)):
+            screen.blit(mushroom_img, mushroom_coords[i])
+            
+def draw_everything():
+    draw_bg()
+    update_world(x_coords_of_all_blocks)
+    draw_world(x_coords_of_all_blocks, y_coords_of_all_blocks)
+    draw_coins(x_of_all_coins,y_of_all_coins)
+    draw_mushrooms(x_of_all_mushrooms,y_of_all_mushrooms)
+    draw_enemies(x_of_all_enemies,y_of_all_enemies, type_of_minion,sens_of_enemies,enemies_state_list)
+    draw_scoreboard()
+    #print(enemies_state_list)
+
+    
+    
+class Player:
+    def __init__(self, anim_list,jumplist, is_forced):
+        self.on_brick = False
+        self.GRAVITY = 1
+        self.y_vel = 0
+        self.jump_count = 0
+        self.sens = sens[-1]
+        self.animation = anim_list
+        self.jump_animation = jumplist
+        self.player_rect = pygame.Rect(coordinates["xc"], coordinates["yc"], self.animation[int(walk_animation_index)].get_width(), self.animation[int(walk_animation_index)].get_height())
+        self.jumprect_rise = pygame.Rect(coordinates["xc"], coordinates["yc"],self.jump_animation[jump_animation_index].get_width(),self.jump_animation[jump_animation_index].get_height() )
+        self.fall_vel = 0
+        self.jumprect_fall = pygame.Rect(coordinates["xc"], coordinates["yc"],self.jump_animation[jump_animation_index+1].get_width(),self.jump_animation[jump_animation_index+1].get_height() )
+        if is_forced == 'yes':
+            self.double_jump(vel_blocks,is_forced)
+    def draw_jump(self, phase):
+        if phase == "rise":
+            if sens[-1] == "right":
+                screen.blit(self.jump_animation[jump_animation_index],(self.jumprect_rise.x, self.jumprect_rise.y))
+            elif sens[-1] == "left":
+                screen.blit(pygame.transform.flip(self.jump_animation[jump_animation_index], True, False),  (self.jumprect_rise.x, self.jumprect_rise.y))
+        elif phase == 'fall':
+            if sens[-1] == "right":
+                screen.blit(self.jump_animation[jump_animation_index+1],(self.jumprect_fall.x, self.jumprect_fall.y))
+            elif sens[-1] == "left":
+                screen.blit(pygame.transform.flip(self.jump_animation[jump_animation_index+1], True, False),  (self.jumprect_fall.x, self.jumprect_fall.y))
+        pygame.draw.rect(screen, (255,255,255),self.jumprect_rise, 2)
+    def draw_player(self):
+        if sens[-1] == "right":
+            screen.blit(self.animation[int(walk_animation_index)],(self.player_rect.x, self.player_rect.y))
+        elif sens[-1] == "left":
+            screen.blit(pygame.transform.flip(self.animation[int(walk_animation_index)], True, False),  (self.player_rect.x, self.player_rect.y))
+        else:
+            screen.blit(self.animation[int(walk_animation_index)],(self.player_rect.x, self.player_rect.y))
+        pygame.draw.rect(screen, (255,255,255), self.player_rect, 2)
+        # pygame.draw.rect(screen, (255,0,0), (coordinates["xc"], coordinates["yc"], self.animation[walk_animation_index].get_width(), self.animation[walk_animation_index].get_height()), 50)
+    def jump(self, event):
+        if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    jump_count.append(0)
+                    coordinates['yc'] -= len(jump_count) *4
+                    #time.sleep(0.02)
+    def attack(self,event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            pass
+    def mov(self, keys, vel_blocks, phase):
+        global walk_animation_index, walking
+        if ((keys[pygame.K_d]) or (keys[pygame.K_RIGHT])) and check_x_coords(coordinates["xc"]+vel, obst_list) is True and coordinates["xc"]-self.player_rect.width < 860:
+            coordinates["xc"] += vel
+            sens.append('right')
+            if (0<=coordinates['xc']<=screen_width//6) or ((screen_width//5)*3.5<=coordinates['xc']<=screen_width):
+                vel_blocks[0] -= vel//2
+                if ((screen_width//5)*3.5<=coordinates['xc']<=screen_width):
+                    coordinates["xc"] -= vel
+            if walk_animation_index+1 < len(self.animation):
+                walking = True
+                walk_animation_index += 0.5
+                if phase == 'walking':
+                    time.sleep(0.03)
+                else:
+                    time.sleep(0.006)
+            else:
+                walk_animation_index = 0
+        elif ((keys[pygame.K_a]) or (keys[pygame.K_LEFT])) and check_x_coords(coordinates["xc"]-vel, obst_list) is True and coordinates["xc"] > 0:
+            coordinates["xc"] -= vel
+            sens.append('left')
+            if (0<=coordinates['xc']<=screen_width//6) or ((screen_width//4)*3.5<=coordinates['xc']<=screen_width):
+                vel_blocks[0] += vel//2
+                if (0<=coordinates['xc']<=screen_width//4):
+                    coordinates["xc"] += vel
+            if walk_animation_index+1 < len(self.animation):
+                walking = True
+                walk_animation_index += 0.5
+                if phase == 'walking':
+                    time.sleep(0.03)
+                else:
+                    time.sleep(0.006)
+            else:
+                walk_animation_index = 0
+        else:
+            walking = False
+    def double_jump(self, vel_blocks, is_forced):
+        pass
+    def gravity(self):
+        if len(on_brick) % 2 == 0:
+            if self.on_brick == False:
+                fall_count.append(0)
+                coordinates['yc'] += len(fall_count)
+        
+    def get_rect(self):
+        return self.player_rect
+                
+    def collision(self,player, brick_coords, bricks):
+            global collide_right, collide_left, jump
+            for i in range(len(brick_list)):
+                brick_list[i].x = brick_coords[i][0]
+            
+            for i in bricks:
+                if sens[-1]=="right":
+                    if self.get_rect().colliderect(i):
+                            if i.y-20<=coordinates["yc"]+player_height<= i.y+20: #landed on brick
+                                    coordinates["yc"] = i.y - player_height +1
+                                    self.on_brick = True
+                                    fall_count.clear()
+                                    if len(on_brick) %2==0:
+                                        on_brick.append(0)
+                                    return False
+                            else:
+                                self.on_brick = False
+                            if coordinates['xc']+player_width>i.x:
+                                coordinates['xc'] = i.x - player_width - 1
+                                if (0<=coordinates['xc']<=screen_width//6) or ((screen_width//5)*3.5<=coordinates['xc']<=screen_width):
+                                    vel_blocks[0] += vel//2    
+                    else:
+                        if len(on_brick) %2 != 0:
+                            on_brick.append(0)
+                        self.on_brick = False
+                elif sens[-1]=="left":
+                    if self.get_rect().colliderect(i):
+                            if i.y-20<coordinates["yc"]+player_height< i.y+20:
+                                    #print('hi')
+                                    coordinates["yc"] = i.y - player_height+1
+                                    self.on_brick = True
+                                    fall_count.clear()
+                                    if len(on_brick) %2 == 0:
+                                        on_brick.append(0)
+                                    return False
+                            if self.get_rect().x<i.x+i.width:
+                                coordinates['xc'] = i.x + self.get_rect().width
+                                if (0<=coordinates['xc']<=screen_width//6) or ((screen_width//4)*3.5<=coordinates['xc']<=screen_width):
+                                    vel_blocks[0] -= vel//2 
+                                break     
+                    else:
+                        if len(on_brick) %2 != 0:
+                            on_brick.append(0)
+                        if len(on_brick)%2 != 0:
+                            jump_check.append(0)
+                        self.on_brick = False
+                if (i.x-player_width-10<=coordinates['xc']<=i.x+player_width+10) and (i.y-self.get_rect().height-10<=self.jumprect_rise.y):
+                    #print((i.y)+tile_size-14,self.jumprect_rise.y)
+                    if (i.y)+tile_size-30<=self.get_rect().y<=i.y+tile_size:
+                            coordinates["yc"] = i.y + tile_size
+                            #print(coordinates["yc"])
+                            return 'collide_up'
+                elif self.jumprect_fall.colliderect(i):
+                    if i.y-20<self.jumprect_fall.y+self.jumprect_fall.height< i.y+10:
+                        coordinates["yc"] = i.y - tile_size*2
+                        if len(on_brick) %2 == 0:
+                            on_brick.append(0)
+                            pass
+                        return False
+                else:
+                    pass
+                    
+def enemy_collision(brick_coords, bricks):
+            for i in range(len(brick_list)):
+                brick_list[i].x = brick_coords[i][0]
+            for i in bricks:
+                index=0
+                for e in enemies_rect:
+                    try:
+                        if e.colliderect(i):
+                                if sens_of_enemies[index]=='right':
+                                    if e.x+enemy_size>i.x:
+                                        del x_of_all_enemies[index]
+                                        x_of_all_enemies.insert(index, i.x - enemy_size - 1 ) 
+                                elif sens_of_enemies[index]=="left":
+                                    if e.x<i.x+i.width:
+                                        del x_of_all_enemies[index]
+                                        x_of_all_enemies.insert(index, i.x + tile_size +1)
+                        else:
+                            if sens_of_enemies[index]=='right':
+                                x, y = ((x_of_all_enemies[index] - vel_blocks[0])//tile_size), y_of_all_enemies[index]//tile_size
+                                if (world_data[y+2][x+1] == 0):
+                                            previous_x = x_of_all_enemies[index]
+                                            del x_of_all_enemies[index]
+                                            x_of_all_enemies.insert(index, previous_x - enemy_vel)
+                            elif sens_of_enemies[index]=="left":
+                                x, y = ((x_of_all_enemies[index] - vel_blocks[0])//tile_size), y_of_all_enemies[index]//tile_size
+                                #print(world_data[y+2][x-1])
+                                if (world_data[y+2][x] == 0):
+                                            previous_x = x_of_all_enemies[index]
+                                            del x_of_all_enemies[index]
+                                            x_of_all_enemies.insert(index, previous_x + enemy_vel)
+                        index+=1
+                    except:
+                            pass
+
+
+# MAIN LOOP
+def main_loopz():
+    num_of_loops = 0
+    clock = pygame.time.Clock()
+    global walk_animation_index
+    walk_animation_index = 0
+    run = True
+    while run:
+        dahyeman = Player(walking_list, jumping_list, 'no')
+        keys = pygame.key.get_pressed()
+        pygame.time.delay(1)
+        draw_everything()
+        if len(jump_count)==8:
+            jump_count.clear()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if len(fall_count) == 0:
+                dahyeman.jump(event)
+            if len(is_powered_up)%2== 0:
+                dahyeman.attack(event)
+        if not walking:
+            walk_animation_index = 0
+        if (0<len(jump_count)<8):
+                coordinates['yc'] -= len(jump_count) * 5
+                jump_count.append(0)
+        keys = pygame.key.get_pressed()
+        if (len(jump_count)== 0) or (len(jump_count)<3):
+            dahyeman.collision(dahyeman , coords_list, brick_list)
+        enemy_collision(coords_list, brick_list)
+        if num_of_loops > 50:
+            dahyeman.gravity()
+        dahyeman.mov(keys, vel_blocks, 'walking')
+        check_element_collected(coordinates["xc"],coordinates["yc"], x_of_all_coins,y_of_all_coins, 'coin')
+        check_element_collected(coordinates["xc"],coordinates["yc"], x_of_all_mushrooms,y_of_all_mushrooms, 'mushroom')
+        enemy_ai_move(coordinates["xc"],coordinates["yc"], x_of_all_enemies,y_of_all_enemies, enemy_vel,sens_of_enemies)
+        if coordinates['yc'] > screen_height:
+            game_over()
+        if 0<len(jump_count) <8:
+            dahyeman.draw_jump('rise')
+            fall_count.clear()
+        else:
+            dahyeman.draw_player()
+        time_passed.append(0)
+        num_of_loops+=1
+        pygame.display.update()
+        clock.tick(45)
+    pygame.quit()
+    
+main_loopz()
+#chech if in the world data the next on_brick is empty
+#NEVER GONNA GIVE YOU UP , NEVER GONNA LET YOU DOWN , NEVER GONNA RUNNN AROUND AND DESERT YOU!!!!!
+#GET
+#scroll background
