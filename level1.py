@@ -566,7 +566,7 @@ class Player:
         if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     jump_count.append(0)
-                    coordinates['yc'] -= len(jump_count) *4
+                    coordinates['yc'] -= len(jump_count) *0.5
                     #time.sleep(0.02)
     def mov(self, keys, vel_blocks, phase):
         global walk_animation_index, walking
@@ -734,7 +734,11 @@ def main_loop():
         if not walking:
             walk_animation_index = 0
         if (0<len(jump_count)<8):
-                coordinates['yc'] -= len(jump_count) * 5
+                if jump_count == 1:
+                    coordinates['yc'] -= 70/len(jump_count)*1.5
+                else:
+                    coordinates['yc'] -= 70/len(jump_count)
+                print(70/len(jump_count))
                 jump_count.append(0)
         keys = pygame.key.get_pressed()
         if (len(jump_count)== 0) or (len(jump_count)<3):
@@ -756,7 +760,7 @@ def main_loop():
         time_passed.append(0)
         num_of_loops+=1
         pygame.display.update()
-        clock.tick(45)
+        clock.tick(20)
     pygame.quit()
     
 main_loop()
